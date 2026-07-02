@@ -111,7 +111,7 @@ spec:
                                 "uid": "VictoriaMetrics"
                             },
                             "editorMode": "code",
-                            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service=\"shoehub-service\"}[5m])) by (le))",
+                            "expr": "histogram_quantile(0.95, sum(delta(microsoft_aspnetcore_hosting_http_server_request_duration_bucket{service=\"shoehub-service\"}[5m])) by (le))",
                             "legendFormat": "Request Duration 95th percentile",
                             "instant": false,
                             "range": true,
@@ -208,7 +208,7 @@ spec:
                                 "uid": "VictoriaMetrics"
                             },
                             "editorMode": "code",
-                            "expr": "sum by(ShoeType) (rate(shoehub_sales[5m]))",
+                            "expr": "sum by(ShoeType) (delta(shoehub_sales[5m]))",
                             "legendFormat": "{{ShoeType}}",
                             "instant": false,
                             "range": true,
@@ -226,6 +226,85 @@ spec:
                                 },
                                 "replaceFields": false
                             }
+                        }
+                    ]
+                },
+                {
+                    "id": 3,
+                    "type": "piechart",
+                    "title": "Payment Method Contribution to Total Revenue",
+                    "transparent": true,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "VictoriaMetrics"
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 24,
+                        "x": 0,
+                        "y": 16
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": null
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "options": {
+                        "reduceOptions": {
+                            "values": false,
+                            "calcs": [
+                                "lastNotNull"
+                            ],
+                            "fields": ""
+                        },
+                        "pieType": "donut",
+                        "displayLabels": [
+                            "name",
+                            "percent"
+                        ],
+                        "legend": {
+                            "showLegend": true,
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "calcs": [
+                                "percent"
+                            ]
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "VictoriaMetrics"
+                            },
+                            "editorMode": "code",
+                            "expr": "sum by (PaymentMethod) (shoehub_payments)",
+                            "legendFormat": "{{PaymentMethod}}",
+                            "instant": true,
+                            "range": false,
+                            "exemplar": false
                         }
                     ]
                 }

@@ -6,15 +6,6 @@ metadata:
     labels:
         dashboards: grafana
 spec:
-    # persistentVolumeClaim:
-    #     spec:
-    #         storageClassName: standard
-    #         accessModes:
-    #             - ReadWriteOnce
-    #         resources:
-    #             requests:
-    #                 storage: 10Gi
-
     config:
         log:
             mode: console
