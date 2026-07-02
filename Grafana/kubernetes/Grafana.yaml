@@ -1,0 +1,83 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+    name: grafana
+    namespace: monitoring
+    labels:
+        dashboards: grafana
+spec:
+    # persistentVolumeClaim:
+    #     spec:
+    #         storageClassName: standard
+    #         accessModes:
+    #             - ReadWriteOnce
+    #         resources:
+    #             requests:
+    #                 storage: 10Gi
+
+    config:
+        log:
+            mode: console
+        security:
+            admin_user: admin
+            admin_password: admin
+
+        database:
+            type: postgres
+            host: grafana-db-rw.database.svc.cluster.local:5432
+            name: grafana
+            user: grafana
+            password: grafana
+            ssl_mode: disable
+
+        plugins:
+            preinstall_auto_update: "false"
+            preinstall_disabled: "false"
+            preinstall_sync: victoriametrics-metrics-datasource
+
+    deployment:
+        spec:
+            template:
+                spec:
+                    securityContext:
+                        runAsNonRoot: true
+                        runAsUser: 472
+                        fsGroup: 472
+                        fsGroupChangePolicy: OnRootMismatch
+                    containers:
+                        - name: grafana
+                          securityContext:
+                              allowPrivilegeEscalation: false
+                              capabilities:
+                                  drop:
+                                      - ALL
+                              privileged: false
+                              readOnlyRootFilesystem: false
+                              runAsNonRoot: true
+                              runAsUser: 472
+                              runAsGroup: 472
+
+                          startupProbe:
+                              httpGet:
+                                  path: /api/health
+                                  port: 3000
+                              initialDelaySeconds: 30
+                              periodSeconds: 10
+                              failureThreshold: 10
+                              successThreshold: 1
+
+                          readinessProbe:
+                              httpGet:
+                                  path: /api/health
+                                  port: 3000
+                              periodSeconds: 10
+                              failureThreshold: 3
+                              successThreshold: 1
+
+                          livenessProbe:
+                              httpGet:
+                                  path: /api/health
+                                  port: 3000
+                              periodSeconds: 10
+                              failureThreshold: 3
+                              successThreshold: 1

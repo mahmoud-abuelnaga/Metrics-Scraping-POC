@@ -1,0 +1,23 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+    name: grafana-db
+    namespace: database
+spec:
+    instances: 1
+    storage:
+        size: 10Gi
+        storageClass: standard
+
+    podSecurityContext:
+        fsGroup: 26
+        runAsUser: 26
+        runAsGroup: 26
+        fsGroupChangePolicy: OnRootMismatch
+
+    bootstrap:
+        initdb:
+            database: grafana
+            owner: grafana
+            secret:
+                name: grafana-db-user

@@ -1,0 +1,11 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+    name: shoehub-folder
+    namespace: monitoring
+spec:
+    title: ShoeHub
+    uid: shoehub
+    instanceSelector:
+        matchLabels:
+            dashboards: grafana
