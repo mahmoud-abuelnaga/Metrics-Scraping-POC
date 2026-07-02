@@ -1,0 +1,3 @@
+[submodule "App Codebase"]
+	path = App Codebase
+	url = https://github.com/aussiearef/ShoeHubV2.git
