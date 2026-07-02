@@ -111,7 +111,7 @@ spec:
                                 "uid": "VictoriaMetrics"
                             },
                             "editorMode": "code",
-                            "expr": "histogram_quantile(0.95, sum(delta(microsoft_aspnetcore_hosting_http_server_request_duration_bucket{service=\"shoehub-service\"}[5m])) by (le))",
+                            "expr": "histogram_quantile(0.95, sum(increase(microsoft_aspnetcore_hosting_http_server_request_duration_bucket{service=\"shoehub-service\"}[5m])) by (le))",
                             "legendFormat": "Request Duration 95th percentile",
                             "instant": false,
                             "range": true,
@@ -208,7 +208,7 @@ spec:
                                 "uid": "VictoriaMetrics"
                             },
                             "editorMode": "code",
-                            "expr": "sum by(ShoeType) (delta(shoehub_sales[5m]))",
+                            "expr": "sum by(ShoeType) (increase(shoehub_sales[5m]))",
                             "legendFormat": "{{ShoeType}}",
                             "instant": false,
                             "range": true,
@@ -305,6 +305,192 @@ spec:
                             "instant": true,
                             "range": false,
                             "exemplar": false
+                        }
+                    ]
+                },
+                {
+                    "id": 4,
+                    "type": "barchart",
+                    "title": "Current Sales vs Last 5 mins",
+                    "transparent": true,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "VictoriaMetrics"
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 24,
+                        "x": 0,
+                        "y": 24
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisBorderShow": false,
+                                "axisCenteredZero": false,
+                                "axisColorMode": "text",
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "fillOpacity": 80,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineWidth": 1,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": null
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {
+                                    "id": "byName",
+                                    "options": "Value #A"
+                                },
+                                "properties": [
+                                    {
+                                        "id": "displayName",
+                                        "value": "Current 5m"
+                                    },
+                                    {
+                                        "id": "color",
+                                        "value": {
+                                            "fixedColor": "green",
+                                            "mode": "fixed"
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "matcher": {
+                                    "id": "byName",
+                                    "options": "Value #B"
+                                },
+                                "properties": [
+                                    {
+                                        "id": "displayName",
+                                        "value": "Previous 5m"
+                                    },
+                                    {
+                                        "id": "color",
+                                        "value": {
+                                            "fixedColor": "yellow",
+                                            "mode": "fixed"
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "matcher": {
+                                    "id": "byName",
+                                    "options": "Difference"
+                                },
+                                "properties": [
+                                    {
+                                        "id": "color",
+                                        "value": {
+                                            "fixedColor": "blue",
+                                            "mode": "fixed"
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "options": {
+                        "orientation": "auto",
+                        "xTickLabelRotation": 0,
+                        "xTickLabelSpacing": 0,
+                        "showValue": "auto",
+                        "stacking": "none",
+                        "groupWidth": 0.7,
+                        "barWidth": 0.97,
+                        "barRadius": 0,
+                        "fullHighlight": false,
+                        "legend": {
+                            "showLegend": true,
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "calcs": []
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "VictoriaMetrics"
+                            },
+                            "editorMode": "code",
+                            "expr": "sum by (ShoeType) (increase(shoehub_sales{service=\"shoehub-service\"}[5m]))",
+                            "format": "table",
+                            "instant": true,
+                            "range": false,
+                            "legendFormat": "{{ShoeType}} - now",
+                            "exemplar": false
+                        },
+                        {
+                            "refId": "B",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "VictoriaMetrics"
+                            },
+                            "editorMode": "code",
+                            "expr": "sum by (ShoeType) (increase(shoehub_sales{service=\"shoehub-service\"}[5m] offset 5m))",
+                            "format": "table",
+                            "instant": true,
+                            "range": false,
+                            "legendFormat": "{{ShoeType}} - 5 mins",
+                            "exemplar": false
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "id": "joinByField",
+                            "options": {
+                                "byField": "ShoeType",
+                                "mode": "inner"
+                            }
+                        },
+                        {
+                            "id": "calculateField",
+                            "options": {
+                                "alias": "Difference",
+                                "binary": {
+                                    "left": "Value #A",
+                                    "operator": "-",
+                                    "right": "Value #B"
+                                },
+                                "mode": "binary",
+                                "replaceFields": false
+                            }
                         }
                     ]
                 }
