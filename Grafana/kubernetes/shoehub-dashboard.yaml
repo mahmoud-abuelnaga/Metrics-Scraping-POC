@@ -26,7 +26,7 @@ spec:
                     "id": 1,
                     "type": "timeseries",
                     "title": "Request Duration 95th percentile",
-                    "transparent": true,
+                    "transparent": false,
                     "datasource": {
                         "type": "prometheus",
                         "uid": "VictoriaMetrics"
@@ -123,7 +123,7 @@ spec:
                     "id": 2,
                     "type": "timeseries",
                     "title": "Sales by Shoe Type",
-                    "transparent": true,
+                    "transparent": false,
                     "datasource": {
                         "type": "prometheus",
                         "uid": "VictoriaMetrics"
@@ -233,7 +233,7 @@ spec:
                     "id": 3,
                     "type": "piechart",
                     "title": "Payment Method Contribution to Total Revenue",
-                    "transparent": true,
+                    "transparent": false,
                     "datasource": {
                         "type": "prometheus",
                         "uid": "VictoriaMetrics"
@@ -312,7 +312,7 @@ spec:
                     "id": 4,
                     "type": "barchart",
                     "title": "Current Sales vs Last 5 mins",
-                    "transparent": true,
+                    "transparent": false,
                     "datasource": {
                         "type": "prometheus",
                         "uid": "VictoriaMetrics"
@@ -493,10 +493,213 @@ spec:
                             }
                         }
                     ]
+                },
+                {
+                    "id": 5,
+                    "type": "piechart",
+                    "title": "Payment Method Contribution in ${CountryCode}",
+                    "transparent": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "VictoriaMetrics"
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 24,
+                        "x": 0,
+                        "y": 32
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": null
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "options": {
+                        "reduceOptions": {
+                            "values": false,
+                            "calcs": [
+                                "lastNotNull"
+                            ],
+                            "fields": ""
+                        },
+                        "pieType": "donut",
+                        "displayLabels": [
+                            "name",
+                            "percent"
+                        ],
+                        "legend": {
+                            "showLegend": true,
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "calcs": [
+                                "percent"
+                            ]
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "VictoriaMetrics"
+                            },
+                            "editorMode": "code",
+                            "expr": "sum by (PaymentMethod) (shoehub_payments{CountryCode=\"$CountryCode\"})",
+                            "legendFormat": "{{PaymentMethod}}",
+                            "instant": true,
+                            "range": false,
+                            "exemplar": false
+                        }
+                    ]
+                },
+                {
+                    "id": 6,
+                    "type": "piechart",
+                    "title": "Country Payment Contribution for ${PaymentMethod}",
+                    "transparent": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "VictoriaMetrics"
+                    },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 24,
+                        "x": 0,
+                        "y": 40
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "mappings": [],
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {
+                                        "color": "green",
+                                        "value": null
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
+                                ]
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "options": {
+                        "reduceOptions": {
+                            "values": false,
+                            "calcs": [
+                                "lastNotNull"
+                            ],
+                            "fields": ""
+                        },
+                        "pieType": "donut",
+                        "displayLabels": [
+                            "name",
+                            "percent"
+                        ],
+                        "legend": {
+                            "showLegend": true,
+                            "displayMode": "list",
+                            "placement": "bottom",
+                            "calcs": [
+                                "percent"
+                            ]
+                        },
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "VictoriaMetrics"
+                            },
+                            "editorMode": "code",
+                            "expr": "sum by (CountryCode) (shoehub_payments{PaymentMethod=\"$PaymentMethod\"})",
+                            "legendFormat": "{{CountryCode}}",
+                            "instant": true,
+                            "range": false,
+                            "exemplar": false
+                        }
+                    ]
                 }
             ],
             "templating": {
-                "list": []
+                "list": [
+                    {
+                        "name": "CountryCode",
+                        "label": "CountryCode",
+                        "type": "query",
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "VictoriaMetrics"
+                        },
+                        "definition": "label_values(shoehub_payments, CountryCode)",
+                        "query": {
+                            "query": "label_values(shoehub_payments, CountryCode)",
+                            "refId": "StandardVariableQuery"
+                        },
+                        "regex": "",
+                        "sort": 0,
+                        "refresh": 1,
+                        "multi": false,
+                        "includeAll": false,
+                        "allowCustomValue": true,
+                        "current": {},
+                        "options": []
+                    },
+                    {
+                        "name": "PaymentMethod",
+                        "label": "PaymentMethod",
+                        "type": "query",
+                        "datasource": {
+                            "type": "prometheus",
+                            "uid": "VictoriaMetrics"
+                        },
+                        "definition": "label_values(shoehub_payments, PaymentMethod)",
+                        "query": {
+                            "query": "label_values(shoehub_payments, PaymentMethod)",
+                            "refId": "StandardVariableQuery"
+                        },
+                        "regex": "",
+                        "sort": 0,
+                        "refresh": 1,
+                        "multi": false,
+                        "includeAll": false,
+                        "allowCustomValue": true,
+                        "current": {},
+                        "options": []
+                    }
+                ]
             },
             "annotations": {
                 "list": [
