@@ -19,6 +19,9 @@ spec:
           noDataState: Alerting
           execErrState: Error
           isPaused: false
+          labels:
+              team: tech
+              severity: warning
           annotations:
               summary: Payment of {{ $labels.PaymentMethod }} is dropping below 2000
           data:

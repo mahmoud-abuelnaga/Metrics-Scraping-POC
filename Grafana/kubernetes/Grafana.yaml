@@ -13,6 +13,15 @@ spec:
             admin_user: admin
             admin_password: admin
 
+        smtp:
+            enabled: "true"
+            host: sandbox.smtp.mailtrap.io:587
+            user: $__env{GF_SMTP_USER}
+            password: $__env{GF_SMTP_PASSWORD}
+            from_address: alerts@example.com
+            from_name: Grafana Alerts
+            startTLS_policy: OpportunisticStartTLS
+
         database:
             type: postgres
             host: grafana-db-rw.database.svc.cluster.local:5432
@@ -37,6 +46,9 @@ spec:
                         fsGroupChangePolicy: OnRootMismatch
                     containers:
                         - name: grafana
+                          envFrom:
+                              - secretRef:
+                                    name: grafana-smtp
                           securityContext:
                               allowPrivilegeEscalation: false
                               capabilities:
