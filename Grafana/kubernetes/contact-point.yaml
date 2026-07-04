@@ -15,3 +15,26 @@ spec:
           type: email
           settings:
               addresses: mahmoudabuelnaga27@gmail.com
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaContactPoint
+metadata:
+    name: shoehub-slack-contact-point
+    namespace: monitoring
+spec:
+    instanceSelector:
+        matchLabels:
+            dashboards: grafana
+
+    name: ShoeHub Slack
+
+    receivers:
+        - uid: shoehub-slack
+          type: slack
+          settings: {}
+          valuesFrom:
+              - targetPath: url
+                valueFrom:
+                    secretKeyRef:
+                        name: grafana-slack-webhook
+                        key: url
