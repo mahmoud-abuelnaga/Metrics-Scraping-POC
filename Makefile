@@ -82,6 +82,9 @@ Postgres/cnpg.yaml:
 install-cnpg: Postgres/cnpg.yaml
 	kubectl apply --server-side -f Postgres/cnpg.yaml -n ${CNPG_OPERATOR_NAMESPACE}
 
+deploy-local-path-provisioner:
+	kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.36/deploy/local-path-storage.yaml
+
 deploy-postgres:
 	kubectl -n ${DATABASE_NAMESPACE} apply -f Postgres/grafana-db-user.yaml
 	kubectl -n ${DATABASE_NAMESPACE} apply -f Postgres/cluster.yaml
