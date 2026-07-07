@@ -86,6 +86,6 @@ deploy-postgres:
 	kubectl -n ${DATABASE_NAMESPACE} apply -f Postgres/grafana-db-user.yaml
 	kubectl -n ${DATABASE_NAMESPACE} apply -f Postgres/cluster.yaml
 
-# App Commands
-deploy-app:
+# ShoeHub App Commands
+deploy-shoehub-app:
 	kubectl -n ${PRODUCTION_NAMESPACE} apply -f App/
