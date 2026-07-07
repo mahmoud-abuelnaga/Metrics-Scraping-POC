@@ -1,7 +1,7 @@
 .PHONY: start-cluster stop-cluster
 .PHONY: install-grafana-operator deploy-grafana list-grafana-versions
 .PHONY: install-victoria-metrics list-victoria-metrics-versions
-.PHONY: install-postgres list-postgres-versions
+.PHONY: install-cnpg deploy-postgres list-postgres-versions
 
 # General Variables
 MONITORING_NAMESPACE := monitoring
