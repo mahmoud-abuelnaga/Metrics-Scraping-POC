@@ -14,8 +14,6 @@ FROM node:24-alpine
 WORKDIR /app
 
 ENV NODE_ENV=production
-RUN apk add --no-cache tini
-
 COPY package*.json ./
 RUN --mount=type=cache,id=npm-cache,target=/root/.npm,sharing=shared \
     npm ci --omit=dev --prefer-offline
