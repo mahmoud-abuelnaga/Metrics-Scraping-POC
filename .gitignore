@@ -1,3 +1,4 @@
 metrics.txt
 node_modules/
 dist/
+.env

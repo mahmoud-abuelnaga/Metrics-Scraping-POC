@@ -5,7 +5,8 @@ const prometheusHost = process.env.PROMETHEUS_HOST || "0.0.0.0";
 const prometheusEndpoint = process.env.PROMETHEUS_ENDPOINT || "/metrics";
 const prometheusPort = process.env.OTEL_PROMETHEUS_PORT || "9464";
 const nodeEnv = process.env.NODE_ENV || "development";
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || "3000";
+const shutdownGracePeriod = process.env.SHUTDOWN_GRACE_PERIOD || "10s";
 
 export {
     logLevel,
@@ -16,4 +17,5 @@ export {
     prometheusPort,
     prometheusEndpoint,
     prometheusHost,
+    shutdownGracePeriod,
 };

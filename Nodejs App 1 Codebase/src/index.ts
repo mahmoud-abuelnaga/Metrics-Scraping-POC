@@ -3,6 +3,7 @@ import { httpLogger, captureResponseBody } from "./logs/http-logger.js";
 import { port } from "./global/env-vars.js";
 import { errorHandler } from "./middlewares/error-handling.js";
 import { shutdown } from "./shutdown.js";
+import { logger } from "./logs/logger.js";
 
 const app = express();
 
@@ -37,7 +38,7 @@ app.use((_req, res, _next) => {
 app.use(errorHandler);
 
 const server = app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+    logger.info({ port }, `Server is running on port ${port}`);
 });
 
 process.once("SIGTERM", () => {
