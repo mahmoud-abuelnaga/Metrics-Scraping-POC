@@ -33,7 +33,7 @@ spec:
         plugins:
             preinstall_auto_update: "false"
             preinstall_disabled: "false"
-            preinstall_sync: victoriametrics-metrics-datasource
+            preinstall_sync: victoriametrics-metrics-datasource,grafana-lokiexplore-app
 
     deployment:
         spec:
