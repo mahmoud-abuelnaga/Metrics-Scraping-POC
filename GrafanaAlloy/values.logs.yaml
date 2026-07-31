@@ -107,6 +107,12 @@ alloy:
             target_label  = "service_name"
         }
 
+        // Pods without the label produce an empty value, which Loki drops.
+        rule {
+            source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_version"]
+            target_label  = "service_version"
+        }
+
         rule {
             source_labels = [
               "__meta_kubernetes_pod_uid",
@@ -180,14 +186,15 @@ alloy:
           forward_to = [loki.relabel.pod_logs.receiver]
       }
 
-      // Only `service_name` and `namespace` survive as indexed labels;
-      // everything else was attached as structured metadata above.
+      // Only `service_name`, `namespace` and `service_version` survive as
+      // indexed labels; everything else was attached as structured metadata
+      // above.
       loki.relabel "pod_logs" {
           forward_to = [loki.write.default.receiver]
 
           rule {
               action = "labelkeep"
-              regex  = "(service_name|namespace)"
+              regex  = "(service_name|namespace|service_version)"
           }
       }
 
