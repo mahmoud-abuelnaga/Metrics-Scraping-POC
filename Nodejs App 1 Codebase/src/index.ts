@@ -1,3 +1,6 @@
+// Registers the axios interceptors. Kept here rather than in
+// instrumentation.ts so axios loads after the OpenTelemetry SDK has started.
+import "./logs/axios-logger.js";
 import express from "express";
 import { httpLogger, captureResponseBody } from "./logs/http-logger.js";
 import { port } from "./global/env-vars.js";

@@ -1,0 +1,35 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+    name: tempo
+    namespace: monitoring
+spec:
+    instanceSelector:
+        matchLabels:
+            dashboards: grafana
+
+    datasource:
+        name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://tempo-query-frontend.monitoring.svc.cluster.local:3200
+        isDefault: false
+        editable: false
+        jsonData:
+            tracesToMetrics:
+                datasourceUid: VictoriaMetrics
+                spanStartTimeShift: -2m
+                spanEndTimeShift: 2m
+                tags:
+                    - key: service.name
+                      value: service
+            serviceMap:
+                datasourceUid: VictoriaMetrics
+            nodeGraph:
+                enabled: true
+            search:
+                hide: false
+            streamingEnabled:
+                search: true
+                metrics: true

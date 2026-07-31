@@ -33,7 +33,7 @@ spec:
                                 name: seaweedfs-credentials
                                 key: secret-key
                       - name: S3_BUCKET
-                        value: loki-chunks,loki-ruler,loki-admin
+                        value: loki-chunks,loki-ruler,loki-admin,tempo-traces
                   ports:
                       - name: s3
                         containerPort: 8333

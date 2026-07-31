@@ -584,6 +584,11 @@ loki:
     # @schema skipProperties:true;additionalProperties:true
     # -- Limits config
     limits_config:
+        # Raised from the 256KB default: the vm-operator occasionally emits
+        # single log lines >300KB. Truncate is a safety net so an even bigger
+        # line can't make the distributor reject (and drop) the whole batch.
+        max_line_size: 1MB
+        max_line_size_truncate: true
         reject_old_samples: true
         reject_old_samples_max_age: 168h
         max_cache_freshness_per_query: 10m

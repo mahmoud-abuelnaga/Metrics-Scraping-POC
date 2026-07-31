@@ -1,0 +1,254 @@
+global:
+  podSecurityContext:
+    fsGroup: 473
+    supplementalGroups:
+      - 0
+
+crds:
+  create: false
+
+alloy:
+  # -- Enables sending Grafana Labs anonymous usage stats to help improve Grafana
+  # Alloy.
+  enableReporting: false
+  storagePath: /var/lib/alloy
+
+  # extraPorts:
+  #     - name: otlp-grpc
+  #       port: 4317
+  #       targetPort: 4317
+  #       protocol: TCP
+
+  #     - name: otlp-http
+  #       port: 4318
+  #       targetPort: 4318
+  #       protocol: TCP
+
+  mounts:
+    # -- Mount /var/log from the host into the container for log collection.
+    varlog: true
+    # -- Mount /var/lib/docker/containers from the host into the container for log
+    # collection.
+    dockercontainers: false
+    extra:
+      - name: alloy-logs
+        mountPath: /var/lib/alloy
+
+  # -- Security context to apply to the Grafana Alloy container.
+  securityContext:
+    runAsUser: 473
+    runAsGroup: 473
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop:
+        - ALL
+
+  # -- Resource requests and limits to apply to the Grafana Alloy container.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+  # -- Set lifecycle hooks for the Grafana Alloy container.
+  lifecycle:
+    preStop:
+      exec:
+        command:
+          - /bin/sleep
+          - "10"
+
+  configMap:
+    content: |
+      logging {
+        level = "info"
+        format = "json"
+      }
+
+      discovery.kubernetes "pods" {
+        role = "pod"
+
+        // Each DaemonSet instance handles only Pods on its own node.
+        // Without this, every Alloy Pod could discover every cluster Pod.
+        selectors {
+            role  = "pod"
+            field = "spec.nodeName=" + coalesce(
+                sys.env("HOSTNAME"),
+                constants.hostname,
+            )
+        }
+      }
+
+      discovery.relabel "pod_logs" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+            source_labels = ["__meta_kubernetes_namespace"]
+            target_label  = "namespace"
+        }
+
+        rule {
+            source_labels = ["__meta_kubernetes_pod_name"]
+            target_label  = "pod"
+        }
+
+        rule {
+            source_labels = ["__meta_kubernetes_pod_container_name"]
+            target_label  = "container"
+        }
+
+        rule {
+            source_labels = ["__meta_kubernetes_pod_container_name"]
+            target_label  = "service_name"
+        }
+
+        rule {
+            source_labels = [
+              "__meta_kubernetes_pod_uid",
+              "__meta_kubernetes_pod_container_name",
+            ]
+            separator    = "/"
+            replacement  = "/var/log/pods/*$1/*.log"
+            target_label = "__path__"
+        }
+      }
+
+      local.file_match "pod_logs" {
+          path_targets = discovery.relabel.pod_logs.output
+      }
+
+      loki.source.file "pod_logs" {
+          targets    = local.file_match.pod_logs.targets
+          forward_to = [loki.process.pod_logs.receiver]
+      }
+
+      loki.process "pod_logs" {
+          // Removes the Kubernetes CRI timestamp/stream wrapper.
+          stage.cri {}
+
+          // Keep Kubernetes context queryable as structured metadata
+          // instead of indexed labels (empty value = copy the label
+          // with the same name).
+          stage.structured_metadata {
+              values = {
+                  pod       = "",
+                  container = "",
+                  filename  = "",
+                  stream    = "",
+              }
+          }
+
+          // Extract trace context only from our apps (production namespace),
+          // which all emit JSON logs with OTel trace_id/span_id fields.
+          // Monitoring/system components keep their mixed formats untouched.
+          stage.match {
+              selector = "{namespace=\"production\"}"
+
+              // stage.json fails silently on non-JSON lines, so detect the
+              // format up front and stamp it as metadata for auditing.
+              // stage.regex {
+              //    expression = "^\\s*(?P<json_line>\\{)"
+              // }
+
+              // stage.template {
+              //     source = "log_format"
+              //     // Backtick-escaped so Helm's tpl renders it verbatim for Alloy.
+              //     template = "{{ `{{ if .json_line }}json{{ else }}not_json{{ end }}` }}"
+              // }
+
+              stage.json {
+                  expressions = {
+                      trace_id = "trace_id",
+                      span_id  = "span_id",
+                  }
+              }
+
+              stage.structured_metadata {
+                  values = {
+                      trace_id   = "",
+                      span_id    = "",
+                      // log_format = "",
+                  }
+              }
+          }
+
+          forward_to = [loki.relabel.pod_logs.receiver]
+      }
+
+      // Only `service_name` and `namespace` survive as indexed labels;
+      // everything else was attached as structured metadata above.
+      loki.relabel "pod_logs" {
+          forward_to = [loki.write.default.receiver]
+
+          rule {
+              action = "labelkeep"
+              regex  = "(service_name|namespace)"
+          }
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "http://loki-gateway.monitoring.svc/loki/api/v1/push"
+        }
+      }
+
+rbac:
+  # -- The rules to create for the ClusterRole or Role objects.
+  rules:
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["get", "list", "watch"]
+
+  clusterRules:
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["watch"]
+
+# Options for the extra controller used for config reloading.
+configReloader:
+  # -- Resource requests and limits to apply to the config reloader container.
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "50Mi"
+    limits:
+      memory: "100Mi"
+  # -- Security context to apply to the Grafana configReloader container.
+  securityContext:
+    runAsUser: 65534
+    runAsGroup: 65534
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop:
+        - ALL
+
+controller:
+  # -- Type of controller to use for deploying Grafana Alloy in the cluster.
+  # Must be one of 'daemonset', 'deployment', or 'statefulset'.
+  type: "daemonset"
+
+  # -- Termination grace period in seconds for the Grafana Alloy pods.
+  # The default value used by Kubernetes if unspecifed is 30 seconds.
+  terminationGracePeriodSeconds: 60
+
+  # -- Whether to enable automatic deletion of stale PVCs due to a scale down operation, when controller.type is 'statefulset'.
+  enableStatefulSetAutoDeletePVC: false
+
+  volumes:
+    extra:
+      - name: alloy-logs
+        hostPath:
+          path: /var/lib/alloy
+          type: Directory
+
+serviceMonitor:
+  enabled: true

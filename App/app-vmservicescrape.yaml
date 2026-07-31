@@ -1,18 +1,18 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
 metadata:
-    name: shoehub-service
-    namespace: production
-    labels:
-        app.kubernetes.io/name: shoehub-app
+  name: shoehub-app
+  namespace: production
+  labels:
+    app.kubernetes.io/name: shoehub-app
 spec:
-    selector:
-        matchLabels:
-            app.kubernetes.io/name: shoehub-app
-    namespaceSelector:
-        matchNames:
-            - production
-    endpoints:
-        - port: http
-          path: /metrics
-          interval: 20s
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: shoehub-app
+  namespaceSelector:
+    matchNames:
+      - production
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 20s
