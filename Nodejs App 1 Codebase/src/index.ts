@@ -7,6 +7,7 @@ import { port } from "./global/env-vars.js";
 import { errorHandler } from "./middlewares/error-handling.js";
 import { shutdown } from "./shutdown.js";
 import { logger } from "./logs/logger.js";
+import axios from "axios";
 
 const app = express();
 
@@ -21,33 +22,38 @@ app.use(captureResponseBody);
 
 // Routes
 app.get("/random-number", (_req, res, _next) => {
-    const randomNumber = Math.floor(Math.random() * 100);
-    return res.json({ randomNumber });
+  const randomNumber = Math.floor(Math.random() * 100);
+  return res.json({ randomNumber });
 });
 
 app.get("/error", (_req, _res, _next) => {
-    throw new Error("Test error");
+  throw new Error("Test error");
 });
 
 app.post("/replay", (req, res, _next) => {
-    return res.json({ message: "Replay", data: req.body });
+  return res.json({ message: "Replay", data: req.body });
+});
+
+app.get("/axios", async (_req, res, _next) => {
+  const response = await axios.get("https://www.google.com");
+  return res.json({ message: "Axios request was successful" });
 });
 
 app.use((_req, res, _next) => {
-    return res.status(404).json({ message: "Not found" });
+  return res.status(404).json({ message: "Not found" });
 });
 
 // Error handling
 app.use(errorHandler);
 
 const server = app.listen(port, () => {
-    logger.info({ port }, `Server is running on port ${port}`);
+  logger.info({ port }, `Server is running on port ${port}`);
 });
 
 process.once("SIGTERM", () => {
-    void shutdown("SIGTERM", server);
+  void shutdown("SIGTERM", server);
 });
 
 process.once("SIGINT", () => {
-    void shutdown("SIGINT", server);
+  void shutdown("SIGINT", server);
 });
