@@ -95,6 +95,8 @@ run_target deploy-grafana-alloy-logs
 # run_target wait-shoehub-app
 
 run_target deploy-nodejs-app-1
+run_target deploy-nodejs-app-2
 run_target wait-nodejs-app-1
+run_target wait-nodejs-app-2
 
 printf '\nAll components are ready.\n'

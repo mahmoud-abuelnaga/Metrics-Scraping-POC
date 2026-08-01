@@ -363,7 +363,6 @@ deploy-nodejs-app-1:
 	IMAGE_TAG=$$IMAGE_TAG envsubst < NodejsApp1/nodejs-app-1-deployment.yaml | kubectl apply -f -
 	kubectl apply -f NodejsApp1/nodejs-app-1-service.yaml
 	kubectl apply -f NodejsApp1/nodejs-app-1-vmservicescrape.yaml
-	kubectl -n ${PRODUCTION_NAMESPACE} rollout status deployment/nodejs-app-1 --timeout=$(WAIT_TIMEOUT)
 
 
 restart-nodejs-app-1:
@@ -371,6 +370,21 @@ restart-nodejs-app-1:
 
 wait-nodejs-app-1:
 	kubectl -n ${PRODUCTION_NAMESPACE} rollout status deployment/nodejs-app-1 --timeout=$(WAIT_TIMEOUT)
+
+.ONESHELL:
+deploy-nodejs-app-2:
+	IMAGE_TAG=$$(curl -s "https://hub.docker.com/v2/repositories/${DOCKER_REGISTRY}/nodejs-app-1/tags/?page_size=1&ordering=last_updated" \
+  | jq -r '.results[0].name')
+
+	IMAGE_TAG=$$IMAGE_TAG envsubst < NodejsApp2/nodejs-app-2-deployment.yaml | kubectl apply -f -
+	kubectl apply -f NodejsApp2/nodejs-app-2-service.yaml
+	kubectl apply -f NodejsApp2/nodejs-app-2-vmservicescrape.yaml
+
+restart-nodejs-app-2:
+	kubectl -n ${PRODUCTION_NAMESPACE} rollout restart deployment/nodejs-app-2
+
+wait-nodejs-app-2:
+	kubectl -n ${PRODUCTION_NAMESPACE} rollout status deployment/nodejs-app-2 --timeout=$(WAIT_TIMEOUT)
 
 # Tempo Commands
 add-redpanda-helm-repo:

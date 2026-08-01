@@ -2,6 +2,7 @@ import type { Server } from "node:http";
 import { shutdownTelemetry } from "./instrumentation.js";
 import { logger } from "./logs/logger.js";
 import { shutdownGracePeriod } from "./global/env-vars.js";
+import { stopAllReplayJobs } from "./jobs/replay-job.js";
 
 let isShuttingDown = false;
 
@@ -43,6 +44,10 @@ async function shutdown(signal: NodeJS.Signals, server: Server): Promise<void> {
     logger.info({ signal }, `${signal} received; shutting down`);
 
     try {
+        // Stop generating outbound load before anything else; otherwise the
+        // server would keep waiting on replay traffic it is about to drop.
+        stopAllReplayJobs();
+
         // Finish active HTTP requests first.
         await closeHttpServer(server);
     } finally {

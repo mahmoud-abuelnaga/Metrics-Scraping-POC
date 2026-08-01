@@ -8,6 +8,8 @@ const prometheusPort = process.env.OTEL_PROMETHEUS_PORT || "9464";
 const nodeEnv = process.env.NODE_ENV || "development";
 const port = process.env.PORT || "3000";
 const shutdownGracePeriod = process.env.SHUTDOWN_GRACE_PERIOD || "10s";
+const replayTargetUrl =
+    process.env.REPLAY_TARGET_URL || "http://nodejs-app-2:3000/replay";
 
 export {
     logLevel,
@@ -20,4 +22,5 @@ export {
     prometheusEndpoint,
     prometheusHost,
     shutdownGracePeriod,
+    replayTargetUrl,
 };

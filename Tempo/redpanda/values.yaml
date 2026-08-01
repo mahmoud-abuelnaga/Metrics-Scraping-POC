@@ -46,6 +46,18 @@ config:
     default_topic_replications: 1
     internal_topic_replication_factor: 1
 
+    # Tempo replays this topic only to recover from live-store/block-builder
+    # downtime, so hours of history is enough — the durable copy lives in S3.
+    # 6h, with a 2Gi per-partition cap as the backstop.
+    log_retention_ms: 21600000
+    retention_bytes: 2147483648
+
+    # Retention only deletes *closed* segments. The 128Mi/14d defaults mean the
+    # active segment would stay open for weeks at POC trace volume and nothing
+    # would ever age out. Rolling at 16Mi or hourly keeps retention effective.
+    log_segment_size: 16777216
+    log_segment_ms: 3600000
+
 monitoring:
   enabled: true
   scrapeInterval: 30s

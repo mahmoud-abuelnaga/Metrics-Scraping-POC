@@ -8,6 +8,14 @@ import { errorHandler } from "./middlewares/error-handling.js";
 import { shutdown } from "./shutdown.js";
 import { logger } from "./logs/logger.js";
 import axios from "axios";
+import {
+  getReplayJob,
+  listReplayJobs,
+  parseReplayJobRequest,
+  snapshotReplayJob,
+  startReplayJob,
+  stopReplayJob,
+} from "./jobs/replay-job.js";
 
 const app = express();
 
@@ -35,9 +43,48 @@ app.post("/replay", (req, res, _next) => {
 });
 
 app.get("/axios", async (_req, res, _next) => {
-  const response = await axios.get("https://www.google.com");
+  const _ = await axios.get("https://www.google.com");
   return res.json({ message: "Axios request was successful" });
 });
+
+// Starts a background load job and returns immediately with its id. The job
+// keeps sending until it has dispatched the requested number of requests.
+app.post("/replay-extended", (req, res, _next) => {
+  const parsed = parseReplayJobRequest(req.body ?? {});
+
+  if (!parsed.ok) {
+    return res.status(400).json({ error: parsed.message });
+  }
+
+  const job = startReplayJob(parsed.options);
+
+  return res.status(202).json(snapshotReplayJob(job));
+});
+
+app.get("/replay-extended", (_req, res, _next) => {
+  return res.json({ jobs: listReplayJobs() });
+});
+
+app.get("/replay-extended/:jobId", (req, res, _next) => {
+  const job = getReplayJob(req.params.jobId);
+
+  if (!job) {
+    return res.status(404).json({ error: "Job not found" });
+  }
+
+  return res.json(job);
+});
+
+app.delete("/replay-extended/:jobId", (req, res, _next) => {
+  const job = stopReplayJob(req.params.jobId);
+
+  if (!job) {
+    return res.status(404).json({ error: "Job not found" });
+  }
+
+  return res.json(snapshotReplayJob(job));
+});
+
 
 app.use((_req, res, _next) => {
   return res.status(404).json({ message: "Not found" });
