@@ -10,6 +10,10 @@ streamOverHTTPEnabled: true
 global:
   storageClass: local-path
 
+server:
+  http_server_read_timeout: 300s
+  http_server_write_timeout: 300s
+
 defaults:
   # Keep S3 credentials out of the generated Tempo ConfigMap. Tempo expands
   # ${...} references after the Secret has been injected into each component.
@@ -79,6 +83,9 @@ backendWorker:
 
 querier:
   replicas: 1
+  config:
+    search:
+      query_timeout: 280s
 
 queryFrontend:
   replicas: 1
@@ -143,6 +150,28 @@ metricsGenerator:
       remote_write:
         - url: http://vmsingle-vm-victoria-metrics-k8s-stack.monitoring.svc.cluster.local:8428/api/v1/write
           send_exemplars: true
+          # `service_namespace` is derived from the service.namespace dimension
+          # above and is the one label in this stack that follows no
+          # convention: scraped targets get `namespace` from the
+          # VictoriaMetrics operator and Alloy sets `namespace` on Loki
+          # streams. Rewrite it so every signal names the Kubernetes namespace
+          # the same way.
+          #
+          # `service` is deliberately left alone: Tempo hardcodes it for
+          # service.name, which matches both the Prometheus convention and the
+          # label the operator puts on scraped targets.
+          #
+          # Relabel regexes are fully anchored, so this matches `service_namespace`
+          # exactly and leaves the service-graph dimensions
+          # (`client_service_namespace`/`server_service_namespace`, prefixed by
+          # enable_client_server_prefix) untouched.
+          write_relabel_configs:
+            - source_labels: [service_namespace]
+              target_label: namespace
+              regex: (.+)
+              action: replace
+            - regex: service_namespace
+              action: labeldrop
     metrics_ingestion_time_range_slack: 30s
 
 overrides:

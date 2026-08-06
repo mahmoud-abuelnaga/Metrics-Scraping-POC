@@ -47,7 +47,7 @@ done
 require_environment
 
 # Infrastructure needed by every component.
-run_target start-cluster
+run_target create-cluster
 run_target wait-cluster
 run_target provision-alloy-data-dirs
 run_target configure-etcd-metrics
@@ -85,6 +85,7 @@ run_target create-grafana-smtp-secret
 run_target create-grafana-slack-secret
 run_target deploy-grafana
 run_target wait-grafana
+run_target apply-metrics-to-logs-and-traces-correlation
 
 # Grafana Alloy
 run_target add-grafana-alloy-helm-repo

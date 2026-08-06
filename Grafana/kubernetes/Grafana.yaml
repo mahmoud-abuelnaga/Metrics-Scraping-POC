@@ -35,6 +35,10 @@ spec:
             preinstall_disabled: "false"
             preinstall_sync: victoriametrics-metrics-datasource,grafana-lokiexplore-app
 
+        dataproxy:
+          timeout: "300"
+          keep_alive_seconds: "300"
+
     deployment:
         spec:
             template:

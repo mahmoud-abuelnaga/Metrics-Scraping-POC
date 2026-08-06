@@ -104,7 +104,19 @@ alloy:
 
         rule {
             source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+            regex         = "(.+)"
             target_label  = "service_name"
+        }
+
+        // Falls back to the container name when the app label is absent.
+        // The rule only fires if service_name is still empty: the
+        // concatenated string starts with the separator only in that case.
+        rule {
+            source_labels = ["service_name", "container"]
+            separator     = ";"
+            regex         = "^;(.*)$"
+            target_label  = "service_name"
+            replacement   = "$1"
         }
 
         // Pods without the label produce an empty value, which Loki drops.

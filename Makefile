@@ -1,5 +1,5 @@
-.PHONY: start start-cluster wait-cluster provision-alloy-data-dirs configure-etcd-metrics wait-etcd-metrics stop-cluster create-namespaces
-.PHONY: install-grafana-operator deploy-grafana wait-grafana list-grafana-versions
+.PHONY: full-create-cluster create-cluster wait-cluster provision-alloy-data-dirs configure-etcd-metrics wait-etcd-metrics delete-cluster pause-cluster resume-cluster create-namespaces
+.PHONY: install-grafana-operator deploy-grafana wait-grafana list-grafana-versions apply-metrics-to-logs-and-traces-correlation
 .PHONY: create-grafana-smtp-secret create-grafana-slack-secret
 .PHONY: add-victoria-metrics-helm-repo install-victoria-metrics list-victoria-metrics-versions create-alertmanager-smtp-secret
 .PHONY: install-cnpg wait-cnpg deploy-postgres wait-postgres
@@ -16,6 +16,7 @@
 .SHELLFLAGS := -ec
 
 # General Variables
+MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 MONITORING_NAMESPACE := monitoring
 DATABASE_NAMESPACE := database
 PRODUCTION_NAMESPACE := production
@@ -23,6 +24,8 @@ WAIT_TIMEOUT ?= 15m
 HELM_TIMEOUT ?= 15m
 ETCD_WAIT_RETRIES ?= 10
 ETCD_RETRY_DELAY ?= 10
+CLUSTER_WAIT_RETRIES ?= 30
+CLUSTER_RETRY_DELAY ?= 5
 DOCKER_REGISTRY ?= "abuelnaga0"
 KIND_CLUSTER_NAME ?= metrics-scraping-poc
 KIND_CONTEXT := kind-$(KIND_CLUSTER_NAME)
@@ -79,16 +82,16 @@ REDPANDA_RELEASE_NAME := tempo-kafka
 REDPANDA_VALUES_FILE := Tempo/redpanda/values.yaml
 
 # Cluster Commands
-# start-cluster blocks on Calico because nodes stay NotReady until the CNI is
+# create-cluster blocks on Calico because nodes stay NotReady until the CNI is
 # serving, and every later target schedules pods that need working networking.
-start:
+full-create-cluster:
 	$(if $(strip $(SMTP_USERNAME)),,$(error SMTP_USERNAME is required))
 	$(if $(strip $(SMTP_PASSWORD)),,$(error SMTP_PASSWORD is required))
 	$(if $(strip $(SLACK_WEBHOOK_URL)),,$(error SLACK_WEBHOOK_URL is required))
 	$(if $(strip $(GMAIL_PASSWORD)),,$(error GMAIL_PASSWORD is required))
 	./scripts/start-components.sh
 
-start-cluster:
+create-cluster:
 	@if kind get clusters | grep -Fxq "$(KIND_CLUSTER_NAME)"; then \
 		echo "Using existing kind cluster $(KIND_CLUSTER_NAME)"; \
 		kubectl config use-context "$(KIND_CONTEXT)"; \
@@ -173,8 +176,47 @@ wait-etcd-metrics:
 		attempt=$$((attempt + 1)); \
 	done
 
-stop-cluster:
+delete-cluster:
 	kind delete cluster --name "$(KIND_CLUSTER_NAME)"
+
+# kind nodes are ordinary Docker containers, so the cluster suspends by stopping
+# them. Container filesystems survive, and with them every local-path PV, so
+# Postgres/SeaweedFS/Tempo data comes back intact; delete-cluster discards it.
+# `kind get nodes` exits 0 for an unknown cluster, so the guard checks output.
+pause-cluster:
+	@nodes="$$(kind get nodes --name "$(KIND_CLUSTER_NAME)" 2>/dev/null)"; \
+	if [ -z "$$nodes" ]; then \
+		echo "No kind cluster named $(KIND_CLUSTER_NAME)" >&2; \
+		exit 1; \
+	fi; \
+	docker stop $$nodes
+
+# Docker keeps each container's published port across stop/start, so the API
+# server returns on its original host port and the existing kubeconfig context
+# stays valid. Only the control plane needs time to start answering again.
+resume-cluster:
+	@nodes="$$(kind get nodes --name "$(KIND_CLUSTER_NAME)" 2>/dev/null)"; \
+	if [ -z "$$nodes" ]; then \
+		echo "No kind cluster named $(KIND_CLUSTER_NAME)" >&2; \
+		exit 1; \
+	fi; \
+	docker start $$nodes
+	kubectl config use-context "$(KIND_CONTEXT)"
+	@attempt=1; \
+	while [ "$$attempt" -le "$(CLUSTER_WAIT_RETRIES)" ]; do \
+		if kubectl --context "$(KIND_CONTEXT)" get --raw /readyz >/dev/null 2>&1; then \
+			echo "API server is answering"; \
+			break; \
+		fi; \
+		if [ "$$attempt" -eq "$(CLUSTER_WAIT_RETRIES)" ]; then \
+			echo "API server did not come back after $(CLUSTER_WAIT_RETRIES) attempts" >&2; \
+			exit 1; \
+		fi; \
+		echo "API server unreachable (attempt $$attempt/$(CLUSTER_WAIT_RETRIES)); retrying in $(CLUSTER_RETRY_DELAY)s"; \
+		sleep "$(CLUSTER_RETRY_DELAY)"; \
+		attempt=$$((attempt + 1)); \
+	done
+	kubectl wait --for=condition=Ready node --all --timeout=$(WAIT_TIMEOUT)
 
 create-namespaces:
 	kubectl create namespace ${MONITORING_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
@@ -218,6 +260,9 @@ deploy-grafana:
 wait-grafana:
 	kubectl -n ${MONITORING_NAMESPACE} wait --for=create deployment/grafana-deployment --timeout=$(WAIT_TIMEOUT)
 	kubectl -n ${MONITORING_NAMESPACE} rollout status deployment/grafana-deployment --timeout=$(WAIT_TIMEOUT)
+
+apply-metrics-to-logs-and-traces-correlation:
+	$(MAKEFILE_DIR)scripts/apply-correlations.sh
 
 # VictoriaMetrics Commands
 add-victoria-metrics-helm-repo:
