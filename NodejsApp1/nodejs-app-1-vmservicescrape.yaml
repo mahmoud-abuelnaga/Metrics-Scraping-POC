@@ -9,8 +9,12 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: nodejs-app-1
-  podTargetLabels:
-    - app.kubernetes.io/version
+  # podTargetLabels is deliberately absent. It is what stamped
+  # app_kubernetes_io_version onto every series, duplicating the `version`
+  # label built below. Dropping it here removes the label at its source
+  # instead of paying to scrape it and discarding it afterwards. The
+  # `version` rule is unaffected: __meta_kubernetes_pod_label_* are
+  # discovery-time meta labels, always present regardless of this field.
   namespaceSelector:
     matchNames:
       - production
@@ -23,3 +27,19 @@ spec:
           targetLabel: version
           regex: (.+)
           replacement: $1
+
+      # endpoint/job/instance come from the operator's default target
+      # relabeling; service, namespace and pod already identify these series,
+      # and pod keeps the two replicas distinct once instance is gone. Safe for
+      # target health: metric relabeling does not apply to the synthetic
+      # up/scrape_* series, so up{job=...,instance=...} survives.
+      #
+      # The rest come from the app's OpenTelemetry Prometheus exporter.
+      #
+      # Two labels cannot be dropped here: app_kubernetes_io_version is removed
+      # by omitting podTargetLabels above, and `prometheus` is a global
+      # external label applied after metric relabeling (see vmagent
+      # externalLabels in VictoriaMetrics/helm/values.yaml).
+      metricRelabelConfigs:
+        - regex: endpoint|instance|job|otel_scope_name|url_scheme
+          action: labeldrop

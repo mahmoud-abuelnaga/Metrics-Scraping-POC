@@ -22,6 +22,8 @@ readonly GRAFANA_USER="${GRAFANA_USER:-admin}"
 readonly GRAFANA_PASSWORD="${GRAFANA_PASSWORD:-admin}"
 readonly LOCAL_PORT="${LOCAL_PORT:-13000}"
 readonly SOURCE_UID="VictoriaMetrics"
+readonly DATASOURCE_WAIT_RETRIES="${DATASOURCE_WAIT_RETRIES:-120}"
+readonly DATASOURCE_RETRY_DELAY="${DATASOURCE_RETRY_DELAY:-2}"
 
 readonly TRACES_LABEL="View traces for this service"
 readonly LOGS_LABEL="View logs for this service"
@@ -56,17 +58,26 @@ api() {
 # if either is missing. grafana-operator pushes GrafanaDatasource CRs into the
 # instance on its own reconcile loop, which finishes some time after the Grafana
 # deployment reports rolled out, so a healthy /api/health is not enough.
+#
+# The budget has to cover a full operator resync: a CR created before the
+# Grafana instance existed (which is the case for every datasource the
+# VictoriaMetrics chart ships) is parked with NoMatchingInstances and only
+# retried on the next periodic pass. That interval is defaultResyncPeriod in
+# Grafana/helm/values.yaml; keep this comfortably above it.
 wait_for_datasource() {
     local uid="$1"
 
-    for _ in $(seq 1 60); do
+    for _ in $(seq 1 "${DATASOURCE_WAIT_RETRIES}"); do
         if api GET "/api/datasources/uid/${uid}" >/dev/null 2>&1; then
             return 0
         fi
-        sleep 2
+        sleep "${DATASOURCE_RETRY_DELAY}"
     done
 
-    printf 'Datasource %s was never registered in Grafana\n' "${uid}" >&2
+    printf 'Datasource %s was never registered in Grafana after %ss\n' \
+        "${uid}" "$((DATASOURCE_WAIT_RETRIES * DATASOURCE_RETRY_DELAY))" >&2
+    printf 'grafana-operator state (NO MATCHING INSTANCES means the CR never reached Grafana):\n' >&2
+    kubectl -n "${NAMESPACE}" get grafanadatasources >&2 || true
     exit 1
 }
 

@@ -1935,7 +1935,14 @@ vmagent:
     port: "8429"
     selectAllByDefault: true
     scrapeInterval: 20s
-    externalLabels: {}
+    # The operator injects `prometheus: <namespace>/<name>` here by default,
+    # which lands on every scraped series. It identifies the scraping agent,
+    # which is meaningless in a single-agent cluster. External labels are
+    # applied after metric_relabel_configs, so a labeldrop in a VMServiceScrape
+    # cannot remove it - it has to be overridden at the source. VictoriaMetrics
+    # discards labels with an empty value on ingestion.
+    externalLabels:
+      prometheus: ""
       # For multi-cluster setups it is useful to use "cluster" label to identify the metrics source.
       # For example:
       # cluster: cluster-name

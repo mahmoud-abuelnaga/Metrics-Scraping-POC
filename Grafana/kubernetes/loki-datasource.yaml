@@ -36,6 +36,28 @@ spec:
         # expression, so the log's service_name seeds a query against
         # the Tempo-generated span metrics.
         #
+        # logs -> metrics. Deliberately an *external* link (no
+        # datasourceUid) even though the target is a Grafana data
+        # source. Setting datasourceUid makes Grafana build an internal
+        # link, and the query object it emits for a derived field is
+        # hardcoded to `{query: <url>, queryType: ...}`:
+        #
+        #   getDerivedFields.ts:
+        #     query: { query: derivedFieldConfig.url,
+        #              queryType: queryType(dsSettings?.type) }
+        #
+        # mapInternalLinkToExplore forwards that object to the target
+        # without any type-specific conversion, and `queryType` is only
+        # populated for Tempo and X-Ray. Prometheus reads `expr`, never
+        # `query`, so an internal link opens Explore with an empty query
+        # editor and "No data". Derived fields only ever supported
+        # tracing targets; the TraceID link above works precisely
+        # because Tempo's query model *is* {query, queryType}.
+        #
+        # Hand-writing the Explore URL sidesteps that: it is the same
+        # payload Grafana generates, with `expr` in place of `query`.
+        # ${__from}/${__to} carry the source pane's time range across.
+        #
         # The label names differ by design on each side: Loki indexes
         # service_name (it would synthesise that label anyway via
         # discover_service_name) while metrics use `service`, the
@@ -50,6 +72,5 @@ spec:
         - name: ServiceMetrics
           matcherType: label
           matcherRegex: service_name
-          datasourceUid: VictoriaMetrics
-          url: 'sum by (span_name) (rate(traces_spanmetrics_calls_total{service="${__value.raw}"}[$__rate_interval]))'
+          url: '/explore?left={"range":{"from":"${__from}","to":"${__to}"},"datasource":"VictoriaMetrics","queries":[{"refId":"A","datasource":{"type":"prometheus","uid":"VictoriaMetrics"},"expr":"sum by (span_name) (rate(traces_spanmetrics_calls_total{service=\"${__value.raw}\"}[$__rate_interval]))"}]}'
           urlDisplayLabel: Service RED metrics
