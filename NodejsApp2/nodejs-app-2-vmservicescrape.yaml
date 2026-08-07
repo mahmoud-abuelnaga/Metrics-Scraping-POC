@@ -39,5 +39,5 @@ spec:
       # external label applied after metric relabeling (see vmagent
       # externalLabels in VictoriaMetrics/helm/values.yaml).
       metricRelabelConfigs:
-        - regex: endpoint|instance|job|otel_scope_name|url_scheme
+        - regex: endpoint|instance|job|otel_scope_version|url_scheme
           action: labeldrop
