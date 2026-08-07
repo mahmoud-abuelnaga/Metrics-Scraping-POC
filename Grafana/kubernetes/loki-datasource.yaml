@@ -72,5 +72,5 @@ spec:
         - name: ServiceMetrics
           matcherType: label
           matcherRegex: service_name
-          url: '/explore?left={"range":{"from":"${__from}","to":"${__to}"},"datasource":"VictoriaMetrics","queries":[{"refId":"A","datasource":{"type":"prometheus","uid":"VictoriaMetrics"},"expr":"sum by (span_name) (rate(traces_spanmetrics_calls_total{service=\"${__value.raw}\"}[$__rate_interval]))"}]}'
-          urlDisplayLabel: Service RED metrics
+          url: '/explore?left={"range":{"from":"${__from}","to":"${__to}"},"datasource":"VictoriaMetrics","queries":[{"refId":"A","datasource":{"type":"prometheus","uid":"VictoriaMetrics"},"expr":"sum by (span_name, status_code) (rate(traces_spanmetrics_calls_total{service=\"${__value.raw}\"}[$__rate_interval]))"}]}'
+          urlDisplayLabel: Service span metrics
