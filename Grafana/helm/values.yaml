@@ -52,15 +52,7 @@ clusterDomain: ""
 
 # -- Sets the global default resyncPeriod for all resources.
 # Useful when you want to either lower or raise the duration between reconciliations.
-#
-# Lowered from the chart default of 10m. A GrafanaDatasource created before its
-# Grafana instance exists is parked with NoMatchingInstances, and the operator
-# does not re-reconcile it when the instance later appears - it waits for the
-# next periodic resync. The VictoriaMetrics chart creates its datasource CRs
-# (including the `VictoriaMetrics` UID) early in startup, well before Grafana is
-# deployed, so at 10m the correlations in scripts/apply-correlations.sh raced
-# the operator and start-components.sh aborted.
-defaultResyncPeriod: 1m
+defaultResyncPeriod: 10m
 
 # -- Maximum number of concurrent reconciles per Custom Resource.
 maxConcurrentReconciles: 1

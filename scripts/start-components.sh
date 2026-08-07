@@ -60,32 +60,52 @@ run_target wait-local-path-provisioner
 run_target install-grafana-operator
 run_target install-cnpg
 run_target wait-cnpg
+
+# Grafana's only real dependency is its own Postgres database - nothing here
+# needs VictoriaMetrics, Loki or Tempo to exist yet. Bringing Grafana up before
+# VictoriaMetrics matters because the VictoriaMetrics chart also creates
+# GrafanaDatasource CRs (defaultDatasources.grafanaOperator.enabled). Those CRs
+# reconcile through grafana-operator's error-backoff queue, not a resync timer:
+# a CR whose Grafana instance doesn't exist yet fails with "no matching
+# instances", and controller-runtime requeues failed reconciles with a delay
+# that doubles from 5ms up to a 1000s cap. Installing VictoriaMetrics first (as
+# this used to) meant its datasource CRs accumulated ~10 minutes of failed,
+# backing-off retries before Grafana existed at all - by the time it did, the
+# next retry could be minutes away. With Grafana ready first, that first
+# reconcile attempt just succeeds.
+run_target deploy-postgres
+run_target wait-postgres
+run_target create-grafana-smtp-secret
+run_target create-grafana-slack-secret
+run_target deploy-grafana
+run_target wait-grafana
+
+# VictoriaMetrics must still come before anything that depends on its CRDs:
+# Loki and Tempo's ServiceMonitor/PrometheusRule (converted by the VM
+# operator), and the two Node app VMServiceScrapes below.
 run_target add-victoria-metrics-helm-repo
 # install-victoria-metrics refuses to run without this secret.
 run_target create-alertmanager-smtp-secret
 run_target install-victoria-metrics
 
-# Backing stores must be ready before Loki and Grafana start.
-run_target deploy-postgres
-run_target wait-postgres
+# Correlations only need the VictoriaMetrics/tempo/loki datasource UIDs to be
+# registered in Grafana, not for those services to actually be running yet -
+# run it here to fail fast rather than after SeaweedFS/Loki/Tempo/Alloy.
+run_target apply-metrics-to-logs-and-traces-correlation
+
 run_target create-seaweedfs-secret
 run_target deploy-seaweedfs
 run_target wait-seaweedfs
 
-# Loki needs SeaweedFS; its Helm --wait verifies all chart workloads.
+# Loki needs SeaweedFS and the VictoriaMetrics-provided ServiceMonitor CRD;
+# its Helm --wait verifies all chart workloads.
 run_target add-loki-helm-repo
 run_target install-loki
 
-# Tempo 3 needs its Kafka-compatible write buffer and SeaweedFS object storage.
+# Tempo 3 needs its Kafka-compatible write buffer, SeaweedFS object storage,
+# and the same ServiceMonitor/PrometheusRule CRDs as Loki.
 run_target deploy-tempo
 run_target wait-tempo
-
-# Grafana consumes PostgreSQL, VictoriaMetrics, and Loki.
-run_target create-grafana-smtp-secret
-run_target create-grafana-slack-secret
-run_target deploy-grafana
-run_target wait-grafana
-run_target apply-metrics-to-logs-and-traces-correlation
 
 # Grafana Alloy
 run_target add-grafana-alloy-helm-repo

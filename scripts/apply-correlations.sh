@@ -22,8 +22,9 @@ readonly GRAFANA_USER="${GRAFANA_USER:-admin}"
 readonly GRAFANA_PASSWORD="${GRAFANA_PASSWORD:-admin}"
 readonly LOCAL_PORT="${LOCAL_PORT:-13000}"
 readonly SOURCE_UID="VictoriaMetrics"
-readonly DATASOURCE_WAIT_RETRIES="${DATASOURCE_WAIT_RETRIES:-120}"
-readonly DATASOURCE_RETRY_DELAY="${DATASOURCE_RETRY_DELAY:-2}"
+# 250 * 5s = 1250s, comfortably past the 1000s backoff cap (see wait_for_datasource).
+readonly DATASOURCE_WAIT_RETRIES="${DATASOURCE_WAIT_RETRIES:-250}"
+readonly DATASOURCE_RETRY_DELAY="${DATASOURCE_RETRY_DELAY:-5}"
 
 readonly TRACES_LABEL="View traces for this service"
 readonly LOGS_LABEL="View logs for this service"
@@ -59,11 +60,18 @@ api() {
 # instance on its own reconcile loop, which finishes some time after the Grafana
 # deployment reports rolled out, so a healthy /api/health is not enough.
 #
-# The budget has to cover a full operator resync: a CR created before the
-# Grafana instance existed (which is the case for every datasource the
-# VictoriaMetrics chart ships) is parked with NoMatchingInstances and only
-# retried on the next periodic pass. That interval is defaultResyncPeriod in
-# Grafana/helm/values.yaml; keep this comfortably above it.
+# The budget has to cover controller-runtime's exponential-backoff retry queue,
+# not a resync period. A CR created before its Grafana instance exists fails
+# reconciliation with an error ("no matching instances"), and every reconciler
+# error is requeued with a delay that doubles from 5ms up to a hard cap of
+# 1000s (client-go's DefaultControllerRateLimiter). The datasource CRs the
+# VictoriaMetrics chart creates are the ones that hit this: they're installed
+# ~10 targets before deploy-grafana in start-components.sh, so by the time
+# Grafana exists they've already failed enough times to be retrying every few
+# hundred seconds. loki/tempo don't have this problem because their CRs are
+# applied in the same `kubectl apply` as the Grafana instance itself, so their
+# first failure lands right as Grafana comes up and clears in one or two
+# retries. Keep this comfortably above the 1000s cap.
 wait_for_datasource() {
     local uid="$1"
 
